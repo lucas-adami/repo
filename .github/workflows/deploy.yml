@@ -114,8 +114,6 @@ jobs:
           echo "repo_name=$REPO_NAME" >> $GITHUB_OUTPUT
           echo "Repositório: $REPO_NAME"
 
-      # Removido o passo que verifica e cria repositório no Docker Hub
-
       - name: Inserir versão no App.tsx
         if: steps.version.outputs.should_deploy == 'true'
         run: |
