@@ -202,7 +202,7 @@ jobs:
 
             echo "🔄 Iniciando deploy da imagem: $IMAGE"
 
-            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+            echo "$DOCKER_PASSWORD" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
 
             sudo yum update -y || sudo apt update -y
             sudo systemctl start docker || sudo service docker start
