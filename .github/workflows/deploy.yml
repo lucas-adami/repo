@@ -14,6 +14,7 @@ jobs:
     outputs:
       new_version: ${{ steps.version.outputs.new_version }}
       repo_name: ${{ steps.define_repo_name.outputs.repo_name }}
+      should_deploy: ${{ steps.version.outputs.should_deploy }}
 
     steps:
       - name: Checkout code
