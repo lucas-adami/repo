@@ -160,66 +160,66 @@ jobs:
           git push origin main --tags
 
   deploy:
-  runs-on: ubuntu-latest
-  needs: build
-  if: needs.build.outputs.new_version != '0.0.0' && needs.build.outputs.should_deploy == 'true'
+    runs-on: ubuntu-latest
+    needs: build
+    if: needs.build.outputs.new_version != '0.0.0' && needs.build.outputs.should_deploy == 'true'
 
-  env:
-    DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-    DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
-  steps:
-    - name: Definir o nome do repositório
-      id: define_repo_name
-      run: |
-        REPO_NAME="${{ github.repository }}"
-        REPO_NAME="${REPO_NAME#*/}"
-        echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV 
-        echo "repo_name=$REPO_NAME" >> $GITHUB_OUTPUT
-        echo "Repositório: $REPO_NAME"
+    steps:
+      - name: Definir o nome do repositório
+        id: define_repo_name
+        run: |
+          REPO_NAME="${{ github.repository }}"
+          REPO_NAME="${REPO_NAME#*/}"
+          echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV 
+          echo "repo_name=$REPO_NAME" >> $GITHUB_OUTPUT
+          echo "Repositório: $REPO_NAME"
 
-    - name: Verificar variáveis finais
-      run: |
-        echo "DOCKERHUB_USERNAME: $DOCKERHUB_USERNAME"
-        echo "REPO_NAME: $REPO_NAME"
-        echo "NEW_VERSION: ${{ needs.build.outputs.new_version }}"
-        IMAGE="${DOCKERHUB_USERNAME}/$REPO_NAME:${{ needs.build.outputs.new_version }}"
-        echo "Imagem completa: $IMAGE"
+      - name: Verificar variáveis finais
+        run: |
+          echo "DOCKERHUB_USERNAME: $DOCKERHUB_USERNAME"
+          echo "REPO_NAME: $REPO_NAME"
+          echo "NEW_VERSION: ${{ needs.build.outputs.new_version }}"
+          IMAGE="${DOCKERHUB_USERNAME}/$REPO_NAME:${{ needs.build.outputs.new_version }}"
+          echo "Imagem completa: $IMAGE"
 
-    - name: Deploy to EC2 via SSH
-      uses: appleboy/ssh-action@v0.1.5
-      env:
-        DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_PRIVATE_KEY }}
-        script: |
-          REPO_NAME="${{ needs.build.outputs.repo_name }}"
-          VERSION="${{ needs.build.outputs.new_version }}"
-          IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/$REPO_NAME:$VERSION"
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v0.1.5
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          script: |
+            REPO_NAME="${{ needs.build.outputs.repo_name }}"
+            VERSION="${{ needs.build.outputs.new_version }}"
+            IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/$REPO_NAME:$VERSION"
 
-          echo "🔄 Iniciando deploy da imagem: $IMAGE"
+            echo "🔄 Iniciando deploy da imagem: $IMAGE"
 
-          # Login usando flags -u e -p para evitar problema com --password-stdin
-          docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKER_PASSWORD"
+            # Login corrigido para evitar erro de stdin
+            docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKER_PASSWORD"
 
-          sudo yum update -y || sudo apt update -y
-          sudo systemctl start docker || sudo service docker start
+            sudo yum update -y || sudo apt update -y
+            sudo systemctl start docker || sudo service docker start
 
-          CONTAINER_ID=$(docker ps -aq --filter "name=^/${REPO_NAME}$")
-          if [ -n "$CONTAINER_ID" ]; then
-            echo "⚙️ Container atual em execução:"
-            docker inspect --format='{{.Config.Image}}' $CONTAINER_ID
-            echo "🛑 Parando e removendo container atual..."
-            docker rm -f $REPO_NAME || true
-          else
-            echo "ℹ️ Nenhum container atual encontrado com nome: $REPO_NAME"
-          fi
+            CONTAINER_ID=$(docker ps -aq --filter "name=^/${REPO_NAME}$")
+            if [ -n "$CONTAINER_ID" ]; then
+              echo "⚙️ Container atual em execução:"
+              docker inspect --format='{{.Config.Image}}' $CONTAINER_ID
+              echo "🛑 Parando e removendo container atual..."
+              docker rm -f $REPO_NAME || true
+            else
+              echo "ℹ️ Nenhum container atual encontrado com nome: $REPO_NAME"
+            fi
 
-          docker rmi -f "$IMAGE" || echo "ℹ️ Nenhuma imagem antiga encontrada com a tag: $IMAGE"
+            docker rmi -f "$IMAGE" || echo "ℹ️ Nenhuma imagem antiga encontrada com a tag: $IMAGE"
 
-          docker pull $IMAGE
+            docker pull $IMAGE
 
-          docker run -d -p 3000:80 --name $REPO_NAME $IMAGE
+            docker run -d -p 3000:80 --name $REPO_NAME $IMAGE
