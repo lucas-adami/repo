@@ -64,7 +64,6 @@ jobs:
           MINOR=0
           PATCH=0
           
-          # Iterar por cada linha de commit
           while IFS= read -r COMMIT; do
             if [[ "$COMMIT" == *"BREAKING CHANGE"* ]]; then
               MAJOR=1
@@ -113,33 +112,8 @@ jobs:
           echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV 
           echo "repo_name=$REPO_NAME" >> $GITHUB_OUTPUT
           echo "Repositório: $REPO_NAME"
-      
-      - name: Verificar e criar repositório no Docker Hub (se necessário)
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKER_PASSWORD }}
-          REPO_NAME: ${{ steps.define_repo_name.outputs.repo_name }}
-        run: |
-          echo "Verificando repositório: $REPO_NAME"
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -u $DOCKERHUB_USERNAME:$DOCKERHUB_TOKEN \
-            "https://hub.docker.com/v2/repositories/$DOCKERHUB_USERNAME/$REPO_NAME/")
-          
-          if [ "$RESPONSE" -eq 404 ]; then
-            echo "Repositório não existe. Criando repositório no Docker Hub..."
-            CREATE_RESPONSE=$(curl -s -w "%{http_code}" -o create_output.txt -X POST -u $DOCKERHUB_USERNAME:$DOCKERHUB_TOKEN \
-              -H "Content-Type: application/json" \
-              -d '{"name": "'$REPO_NAME'", "is_private": true}' \
-              "https://hub.docker.com/v2/repositories/$DOCKERHUB_USERNAME/")
-            echo "HTTP resposta criação: $CREATE_RESPONSE"
-            cat create_output.txt
-            if [ "$CREATE_RESPONSE" -ne 201 ]; then
-              echo "Falha ao criar repositório no Docker Hub"
-              exit 1
-            fi
-            echo "Repositório $REPO_NAME criado com sucesso!"
-          else
-            echo "Repositório $REPO_NAME já existe no Docker Hub."
-          fi
+
+      # Removido o passo que verifica e cria repositório no Docker Hub
 
       - name: Inserir versão no App.tsx
         if: steps.version.outputs.should_deploy == 'true'
